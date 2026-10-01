@@ -17,6 +17,18 @@ The initial sandbox run could not bind local TCP ports. The same tests were reru
 
 The binary unit-test fixture is a short byte sequence, **not a playable video**. Actual full MP4 transfer was checked separately. Browser video playback was not visually verified. The reference video was examined through its description and captions, not watched end-to-end.
 
-Windows, macOS Intel, and Linux have not been run locally on this machine. `.github/workflows/test.yml` contains native Windows/macOS/Linux tests, race checks, executable demonstrations, and builds. Actual hosted CI results must be read from the latest pushed commit; merely generating this workflow does not prove a pass. Any final delivery CI links supplement this local record.
+## Hosted native CI actually completed
+
+[Run 36819860518](https://github.com/KrishnaVarun02/mini-http-server-go/actions/runs/36819860518) passed all three jobs on 2026-10-01 for commit `2daafc63f80e4e793b079a49e13c95c85a2ff673`. The run's logs and job conclusions were inspected, including the reported `go version`, operating system, test output, and executable demonstration output.
+
+| Actual runner / architecture | Shell | Result |
+| --- | --- | --- |
+| Windows Server 2025, `windows/amd64`, Go 1.24.4 | PowerShell 7 | [Passed](https://github.com/KrishnaVarun02/mini-http-server-go/actions/runs/36819860518/job/110232900767) |
+| macOS 26.6.2, `darwin/arm64`, Go 1.24.4 | bash | [Passed](https://github.com/KrishnaVarun02/mini-http-server-go/actions/runs/36819860518/job/110232900571) |
+| Ubuntu 24.04.5, `linux/amd64`, Go 1.24.4 | bash | [Passed](https://github.com/KrishnaVarun02/mini-http-server-go/actions/runs/36819860518/job/110232900832) |
+
+Each runner actually executed `go vet ./...`, `go test -race -count=1 ./...`, `go run ./cmd/demo`, and `go build ./cmd/httpserver`. All three test packages passed, and each executable demo printed successful 200/400/500 HTML routes, chunked fixtures and proxy data with verified trailer hashes, and the 27-byte binary POST round trip. These were native socket tests, not cross-compiles or Linux-container substitutes.
+
+The Windows evidence covers the Go commands in PowerShell on a hosted Windows Server machine. A personal Windows desktop installation, Windows ARM64, macOS Intel, Windows browser playback, and Windows live external service calls were not tested. Hosted demos used their explicitly labelled local fixture upstream; live `httpbin.org` and full video transfer were verified separately on the local macOS arm64 host above. This record identifies the exact tested implementation commit; any later documentation-only delivery commit has its own Actions run.
 
 The default origin `httpbin.org` was verified; the optional current-course origin `httpbingo.org` was not separately verified in this record. The server has no cloud deployment dependency or paid API key. This is an educational HTTP/1.1 subset, with limitations listed in README, not a claim of full RFC compliance or production server hardening.
