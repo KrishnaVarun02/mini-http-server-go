@@ -1,0 +1,4 @@
+=== RUN   TestLiveHTTPBin
+--- PASS: TestLiveHTTPBin (1.09s)
+PASS
+ok  	example.com/mini-http-server-go/internal/server	2.168s

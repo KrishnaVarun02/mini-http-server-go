@@ -1,0 +1,9 @@
+MODE: existing server; /httpbin uses its configured real or fixture upstream
+PASS GET /                         status=200 bytes=168
+PASS GET /yourproblem              status=400 bytes=179
+PASS GET /myproblem                status=500 bytes=203
+PASS GET /stream                   status=200 bytes=64
+     chunked trailers: length=64 sha256=43ed0d5e4f9076bdbe707c2aed418fe57cb172e1b0ea1c6236b7e0df7ed36408
+PASS GET /httpbin/range/4096       status=200 bytes=4096
+     chunked trailers: length=4096 sha256=bc45051ac426475f459ec0b0c88a6646d037b8dfb1b9fa3ca3ef9203ce33e283
+PASS POST /echo binary round trip: 27 bytes

@@ -1,0 +1,6 @@
+GET /video status=200
+Content-Type=video/mp4
+Content-Length=20183615
+Byte-for-byte equality with downloaded official tutorial asset: PASS
+SHA256=efb7e540933d5a559ad678f51db240ab2697afb04086901ac34ea503f16a5c42
+Asset is gitignored and not redistributed.

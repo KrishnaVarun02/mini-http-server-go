@@ -1,0 +1,6 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/2 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 2/2 completed, now fuzzing with 12 workers
+fuzz: elapsed: 3s, execs: 1577975 (525910/sec), new interesting: 49 (total: 51)
+fuzz: elapsed: 3s, execs: 1577975 (0/sec), new interesting: 49 (total: 51)
+PASS
+ok  	example.com/mini-http-server-go/internal/protocol	4.802s

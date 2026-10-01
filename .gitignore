@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+/assets/
+/bin/
+/httpserver
+/work/
+/.cache/
+*.test
+*.exe
+coverage.out
+.DS_Store

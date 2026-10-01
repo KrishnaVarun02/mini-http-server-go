@@ -1,0 +1,5 @@
+?   	example.com/mini-http-server-go/cmd/demo	[no test files]
+?   	example.com/mini-http-server-go/cmd/httpserver	[no test files]
+ok  	example.com/mini-http-server-go/internal/protocol	2.482s
+ok  	example.com/mini-http-server-go/internal/server	3.671s
+ok  	example.com/mini-http-server-go/internal/upstream	2.910s
