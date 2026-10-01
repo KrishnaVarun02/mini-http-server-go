@@ -22,6 +22,9 @@ jobs:
         run: go vet ./...
       - name: Unit and TCP integration tests
         run: go test -race -count=1 ./...
+      - name: Repeated Windows TCP teardown regression
+        if: runner.os == 'Windows'
+        run: go test -race -count=20 -run 'TestRawFragmentedAndMalformedTCP|TestEarlyRejectionPreservesResponse|TestTruncatedHandlerResponseRemainsAnError' ./internal/server
       - name: Deterministic demonstration
         run: go run ./cmd/demo
       - name: Build application

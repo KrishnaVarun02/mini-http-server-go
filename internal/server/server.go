@@ -80,10 +80,11 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			defer func() { _ = conn.Close(); mu.Lock(); delete(connections, conn); mu.Unlock(); <-slots }()
+			reader := bufio.NewReaderSize(conn, protocol.MaxLine)
+			defer func() { closeConnection(conn, reader); mu.Lock(); delete(connections, conn); mu.Unlock(); <-slots }()
 			_ = conn.SetDeadline(time.Now().Add(timeout))
 			w := protocol.NewWriter(conn)
-			req, err := protocol.ReadRequest(bufio.NewReaderSize(conn, protocol.MaxLine))
+			req, err := protocol.ReadRequest(reader)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return
@@ -108,4 +109,25 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 			}
 		}()
 	}
+}
+
+// closeConnection follows HTTP/1.1's staged TCP teardown (RFC 9112, 9.6).
+// An early parse error can leave a client's headers/body in flight. Closing
+// both directions immediately would reset the connection and can discard the
+// response before a Windows client reads it. Send FIN on the response side,
+// then drain without interpreting any further requests. Both time and bytes
+// are bounded, and cancellation still closes the tracked socket immediately.
+func closeConnection(conn net.Conn, reader io.Reader) {
+	defer conn.Close()
+	tcp, ok := conn.(*net.TCPConn)
+	if !ok {
+		return
+	}
+	if err := tcp.CloseWrite(); err != nil {
+		return
+	}
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, io.LimitReader(reader, protocol.MaxBody+protocol.MaxHeaders+protocol.MaxLine))
 }

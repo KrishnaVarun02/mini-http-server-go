@@ -1,0 +1,20 @@
+2026-10-01; macOS 26.6.2 arm64; Go 1.24.4 darwin/arm64
+
+Before the fix:
+go test -race -count=1 -run TestEarlyRejectionPreservesResponse ./internal/server
+FAIL: server reset an upload before the client read the response body: write: broken pipe
+
+After half-close and bounded input draining:
+go test -race -count=100 -run 'TestRawFragmentedAndMalformedTCP|TestEarlyRejectionPreservesResponse|TestTruncatedHandlerResponseRemainsAnError' ./internal/server
+ok example.com/mini-http-server-go/internal/server 2.840s
+
+go test -race -count=10 ./...
+ok example.com/mini-http-server-go/internal/protocol 2.327s
+ok example.com/mini-http-server-go/internal/server 3.249s
+ok example.com/mini-http-server-go/internal/upstream 2.742s
+
+go vet ./...
+PASS (exit code 0)
+
+The truncated-response regression explicitly requires io.ErrUnexpectedEOF.
+No network error is treated as a successful complete HTTP response.

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,9 +17,15 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"example.com/mini-http-server-go/internal/protocol"
 )
 
 func start(t *testing.T, c Config) (string, context.CancelFunc, <-chan error) {
+	return startHandler(t, Routes(c))
+}
+
+func startHandler(t *testing.T, handler Handler) (string, context.CancelFunc, <-chan error) {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -26,7 +33,7 @@ func start(t *testing.T, c Config) (string, context.CancelFunc, <-chan error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	s := &Server{Handler: Routes(c), Timeout: 3 * time.Second}
+	s := &Server{Handler: handler, Timeout: 3 * time.Second}
 	go func() { done <- s.Serve(ctx, l) }()
 	t.Cleanup(func() {
 		cancel()
@@ -176,6 +183,70 @@ func TestRawFragmentedAndMalformedTCP(t *testing.T) {
 		if e != nil || r.StatusCode != tc.status || string(b) != tc.body {
 			t.Fatalf("got %v %s %q", e, r.Status, b)
 		}
+	}
+}
+
+// A client can still be uploading when the server rejects its request line.
+// Sending a response and fully closing with unread bytes can reset the socket,
+// destroying that response on Windows. After seeing rejection headers, finish
+// the already-started upload before reading the body, forcing this ordering.
+func TestEarlyRejectionPreservesResponse(t *testing.T) {
+	addr, _, _ := start(t, Config{})
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+	if _, err = io.WriteString(c, "GET / HTTP/9.9\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	r, err := http.ReadResponse(bufio.NewReader(c), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	// Deliberately leave data in flight after the early rejection. The server
+	// must discard it, never parse or dispatch it as a second request.
+	for i := 0; i < 128; i++ {
+		if _, err = io.WriteString(c, strings.Repeat("x", 256)); err != nil {
+			t.Fatalf("server reset an upload before the client read the response body: %v", err)
+		}
+	}
+	if err = c.(*net.TCPConn).CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil || r.StatusCode != 505 || string(body) != "HTTP Version Not Supported\n" {
+		t.Fatalf("response lost: status=%d body=%q error=%v", r.StatusCode, body, err)
+	}
+}
+
+func TestTruncatedHandlerResponseRemainsAnError(t *testing.T) {
+	addr, _, _ := startHandler(t, func(w *protocol.Writer, _ *protocol.Request) error {
+		if err := w.WriteStatusLine(200); err != nil {
+			return err
+		}
+		h := protocol.Headers{}
+		h.Set("content-length", "100")
+		h.Set("connection", "close")
+		if err := w.WriteHeaders(h); err != nil {
+			return err
+		}
+		if _, err := w.WriteBody([]byte("partial")); err != nil {
+			return err
+		}
+		return fmt.Errorf("authored failure after a partial response")
+	})
+	client := http.Client{Timeout: 5 * time.Second}
+	r, err := client.Get("http://" + addr + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	body, err := io.ReadAll(r.Body)
+	if string(body) != "partial" || !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("truncated body accepted: %q %v", body, err)
 	}
 }
 

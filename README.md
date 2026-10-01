@@ -170,7 +170,7 @@ go build -o bin/httpserver.exe ./cmd/httpserver
 Remove-Item -Recurse -Force bin, .cache, assets -ErrorAction SilentlyContinue
 ```
 
-Shutdown closes the listener and active sockets and waits for handlers. The cleanup commands remove downloaded video copies as well as build outputs. There are no cloud resources to destroy.
+After responding, the server half-closes its TCP write side and briefly drains in-flight request bytes before closing the connection. This preserves early error responses on Windows; the drain is bounded to one second and the request size limits. Shutdown closes the listener and active sockets and waits for handlers. The cleanup commands remove downloaded video copies as well as build outputs. There are no cloud resources to destroy.
 
 ## Tests and CI
 
